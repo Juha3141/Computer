@@ -1,0 +1,12 @@
+MOV R0 , 1    | 3802 0001
+MOV R1 , 0    | 3822 0000
+LOOP:         | = 4
+  LDR A , R0  | C008 
+  LDR B , R1  | C128 
+  
+  
+  ADDOUT R2   | 604B
+  MOV R0 , R1 | 4101
+  MOV R1 , R2 | 4221
+  JMP LOOP    | 980D 0004
+  

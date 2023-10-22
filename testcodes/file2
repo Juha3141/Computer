@@ -1,0 +1,34 @@
+
+
+struct Instruction {
+    unsigned char instr;
+    
+    unsigned char instruction_type;
+    unsigned char data_type;
+};
+
+struct Argument {
+    bool argument_type;
+    /* 1 : register
+       2 : address-register
+       3 : address
+       4 : data
+    */
+    int register_number;
+    default_t data;
+};
+
+struct AssemblyCode {
+    unsigned char asmcode[32];
+    int type_count;
+    // subcodes
+    int arg_count;
+    unsigned short type_instructions[10];
+};
+
+struct AssemblyInstruction {
+    char *instruction;
+    int instruction_type;
+    int argument_count;
+    Argument *arguments;
+};

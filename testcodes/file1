@@ -1,0 +1,28 @@
+
+    // create some class that controls overall flow of program
+
+    int argument_count;
+    char assembly[128];
+    char instruction[128];
+    char **arguments;
+    std::cin.getline(assembly , 128);
+    
+    // filter unwanted characters
+
+    remove_first_end_spaces(assembly);
+    for(int i = 0; assembly[i] != 0; i++) {
+        assembly[i] = tolower(assembly[i]);
+    }
+    
+    // check if the arguments are parsed with right character
+
+    if(get_instruction_type(assembly) < 0) {
+        std::cout<<"Error : argument not correctly parsed with ',' character\n";
+        return 0;
+    }
+    
+    parse_instruction(assembly , instruction);
+    remove_spaces(assembly+strlen(instruction)+1);
+    std::cout<<"instruction:\""<<instruction<<"\"\n";
+    std::cout<<assembly<<"\n";
+    argument_count = get_argument(assembly , arguments);

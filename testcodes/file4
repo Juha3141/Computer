@@ -1,0 +1,54 @@
+
+void process_arg(Argument &arg_info , char *asm_arg) {
+    if(asm_arg[0] == '*') { // address notation
+        arg_info.argument_type = 0;
+        // skip address notation
+        for(int i = 1; asm_arg[i] != 0; i++) {
+            if(!isdigit(asm_arg[i])) {
+                arg_info.argument_type = 2; // if there is letter -> register(or something else)
+                break;
+            }
+        }
+        if(arg_info.argument_type == 2) {
+            int reg_num = atoi((asm_arg+1)+1); // assume that first two letters are '*R'
+            // std::cout<<"process_arg:reg_num : "<<reg_num<<"\n";
+            arg_info.register_number = reg_num;
+        }
+        else {
+            arg_info.argument_type = 3;
+            int radix = 10;
+            if(asm_arg[1] == '0' && asm_arg[2] == 'x') {
+                radix = 16;
+            }
+            arg_info.data = strtol(asm_arg+1 , 0x00 , radix); // assume that first letter is '*'
+        }
+        return;
+    }
+    else {
+        arg_info.argument_type = 0;
+        for(int i = 0; asm_arg[i] != 0; i++) {
+            if(!isdigit(asm_arg[i])) {
+                arg_info.argument_type = 1;
+                break;
+            }
+        }
+        if(arg_info.argument_type == 1) {
+            int reg_num = atoi(asm_arg+1); // assume that first letter is 'R'
+            arg_info.register_number = reg_num;
+        }
+        else {
+            arg_info.argument_type = 4;
+            int radix = 10;
+            if(asm_arg[1] == '0' && asm_arg[2] == 'x') {
+                radix = 16;
+            }
+            arg_info.data = strtol(asm_arg+1 , 0x00 , radix); // assume that first letter is '*'
+        
+        }
+        return;
+    }
+    std::cout<<"argument type    : "<<arg_info.argument_type<<"\n";
+    std::cout<<"target reg       : "<<arg_info.register_number<<"\n";
+    std::cout<<"data(or address) : "<<arg_info.data<<"\n";
+}
+
