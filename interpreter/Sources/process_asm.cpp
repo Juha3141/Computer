@@ -11,9 +11,8 @@ void remove_first_end_spaces(char *string) {
         memcpy(string+i , string+i+1 , strlen(string)-i);
         i--;
     }
-    for(int i = strlen(string)-2; (i >= 0 && string[i] == ' '); i--) {
+    for(int i = strlen(string)-1; (i >= 0 && string[i] == ' '); i--) {
         memcpy(string+i , string+i+1 , strlen(string)-i);
-        i--;
     }
 }
 
@@ -36,14 +35,15 @@ int get_instruction_type(const char *string) {
         new std::regex("\\w+[ ]+[A-Za-z\\!-9]+[ ]*,[ ]*[A-Za-z\\!-9]+") , // [instruction] [argument 1],[argument 2]
         new std::regex("\\w+[ ]+[A-Za-z\\!-9]+[ ]*") , // [instruction] [argument 1]
         new std::regex("\\w+\\([A-Za-z\\!-9]+\\)[ ]+[A-Za-z\\!-9]+[ ]*") , // [instruction](argument 1) [argument 2]
+        new std::regex("\\w+\\([A-Za-z\\!-9]+\\)[ ]*") , // [instruction](argument 1)
     };
     for(int i = 0; i < sizeof(regs)/sizeof(std::regex*); i++) {
         if(std::regex_match(string , *regs[i]) == true) {
-            std::cout<<"is_argument_parsed:type matched,i:"<<i<<"\n";
+            std::cout<<"get_instruction_type:type matched,i:"<<i<<"\n";
             return i;
         }
     }
-    std::cout<<"is_argument_parsed:type not matched\n";
+    std::cout<<"get_instruction_type:type not matched\n";
     return -1;
 }
 
@@ -60,8 +60,9 @@ int parse_from_asm(const char *assembly , char *instruction , char **argument , 
         new std::regex("([\\w]+)[ ]+([A-Za-z!-9]+)[ ]*\\,[ ]*([A-Za-z!-9]+)[ ]*") , // [instruction] [argument 1],[argument 2]
         new std::regex("([\\w]+)[ ]+([A-Za-z!-9]+)[ ]*") , // [instruction] [argument 1]
         new std::regex("([\\w]+)\\(([A-Za-z!-9]+)\\)[ ]+([A-Za-z!-9]+)[ ]*") , // [instruction](argument 1) [argument 2]
+        new std::regex("([\\w]+)\\(([A-Za-z!-9]+)\\)[ ]*") , // [instruction](argument 1)
     };
-    if(instruction_type > 4||instruction_type < 0) {
+    if(instruction_type > 5||instruction_type < 0) {
         return 0;
     }
     std::cout<<"instruction_type : "<<instruction_type<<"\n";
