@@ -31,6 +31,7 @@ int main(int argc , char **argv) {
 
         std::cout<<"preprocessing string : \""<<temp_str<<"\"\n";
         int instr_type = InstructionController::preprocessing(c_string);
+        std::cout<<"preprocessed         : \""<<c_string<<"\"\n";
         if(ignore(c_string) == true) {
             delete c_string;
             std::cout<<"ignoring\n";
@@ -63,5 +64,10 @@ int main(int argc , char **argv) {
         std::cout<<"procesing line "<<i<<"\n";
         instruction_controller.process_line(i);
     }
+    std::cout<<"done processing ------------ \n";
+    for(auto i = instruction_controller.interpreted_codes.begin(); i != instruction_controller.interpreted_codes.end(); i++) {
+        printf("%04X " , *i);
+    }
+    std::cout<<"\n";
     return 0;
 }
