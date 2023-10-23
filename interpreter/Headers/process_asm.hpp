@@ -9,5 +9,6 @@ void remove_spaces(char *string);
 int parse_from_asm(const char *assembly , char *instruction , char **argument , int instruction_type);
 
 int get_instruction_type(const char *string);
+bool ignore(const char *oneline_asm);
 
 #endif
