@@ -76,3 +76,10 @@ int parse_from_asm(const char *assembly , char *instruction , char **argument , 
     }
     return argument_count;
 }
+
+bool ignore(const char *oneline_asm) {
+    if(strcmp(oneline_asm , "") == 0) {
+        return true;
+    }
+    return false;
+}
