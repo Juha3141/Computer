@@ -9,6 +9,9 @@
 
 #include <types.hpp>
 
+#define INSTRUCTION_MAININSTRUCTION_SIZE 6
+#define INSTRUCTION_ARGUMENT_SIZE        3
+
 typedef unsigned short default_t;
 typedef char bit_one;
 
@@ -51,6 +54,7 @@ struct Argument {
 struct DataArgument {
     int argument_type;
     default_t data;
+    char *label;
 
     int arg_index;
 };
@@ -117,11 +121,13 @@ class InstructionController {
             current_position = 0;
             marker_store = new VariableMarker();
             AssemblyCode codes[] = {
-                {"mov"     , 2 , {0x00 , 0x00 , 0x00 , 0x00 , 0x02 , 0x03 , 0x00 , 0x07 , 0x04 , 0x01 , 0x05 , 0x06}} , 
-                {"ldr"     , 2 , {0x00 , 0x09 , 0x0A , 0x08 , 0x00 , 0x00 , 0x0B , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
-                {"aluout"  , 1 , {0x00 , 0x00 , 0x0D , 0x0C , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
-                {"alutest" , 0 , {0x0E , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
-                {"jmp"     , 1 , {0x00 , 0x00 , 0x0F , 0x10 , 0x00 , 0x00 , 0x11 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
+                {"mov"     , 2 , {0xFF , 0xFF , 0xFF , 0xFF , 0x02 , 0x03 , 0xFF , 0x07 , 0x04 , 0x01 , 0x05 , 0x06}} , 
+                {"ldr"     , 2 , {0xFF , 0x09 , 0x0A , 0x08 , 0xFF , 0xFF , 0x0B , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} , 
+                {"aluout"  , 1 , {0xFF , 0xFF , 0x0D , 0x0C , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} , 
+                {"alutest" , 0 , {0x0E , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} , 
+                {"jmp"     , 1 , {0xFF , 0xFF , 0x0F , 0x10 , 0xFF , 0xFF , 0x11 , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} , 
+                {"stpc"    , 1 , {0xFF , 0xFF , 0xFF , 0x1B , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} , 
+                {"hlt"     , 0 , {0x1F , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}}
             };
             for(auto i : codes) {
                 asm_codes.push_back(i);
@@ -171,6 +177,8 @@ class InstructionController {
                 if(instruction.arguments[0].argument_type == ARGUMENT_TYPE_REGISTER) return 1;
                 if(instruction.arguments[0].argument_type ==  ARGUMENT_TYPE_ADDR_REG) return 1;
                 if(instruction.arguments[0].argument_type == ARGUMENT_TYPE_EXT_REG) return 6;
+                if(instruction.arguments[0].argument_type == ARGUMENT_TYPE_COND_JUMP) return 7;
+                if(instruction.arguments[0].argument_type == ARGUMENT_TYPE_ALU_OPER) return 8;
             }
             if(instruction.argument_count == 2) {
                 int arg_t1 = instruction.arguments[0].argument_type;
@@ -237,11 +245,12 @@ class InstructionController {
             return -1;
         }
 
-        inline default_t convert_instruction_code(int main_instruction , int argument0 , int argument1 , int data_type , int instruction_type) {
-            return ((main_instruction & 0b11111)|((argument0 & 0b111) << 5)|((argument1 & 0b111) << (5+3))|((data_type & 0b11) << (5+3+3))|((instruction_type & 0b111) << (5+3+3+2)));
+        inline default_t convert_instruction_code(int main_instruction , int argument0 , int argument1) {
+            return ((main_instruction & 0b111111)|((argument0 & 0b111) << INSTRUCTION_MAININSTRUCTION_SIZE)|((argument1 & 0b111) << (INSTRUCTION_MAININSTRUCTION_SIZE+INSTRUCTION_ARGUMENT_SIZE)));
         }
 
         VariableMarker *marker_store;
+        std::vector<default_t>interpreted_codes;
     private:
         AssemblyCode *get_assembly_code_info(const char *instruction) {
             int sz = asm_codes.size();
