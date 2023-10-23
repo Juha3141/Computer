@@ -21,10 +21,11 @@ struct Argument {
      * special types : 
      * 5 : Conditional Jump
      * 6 : ALU Operation
+     * 7 : label-register
     */
     int register_number;
-    char *ext_reg;
-    char *label_name;
+    int ext_reg_number;
+    // char *label_name;
     int conditional_jump;
     /* 0 : JMP
      * 1 : JZ
@@ -43,6 +44,15 @@ struct Argument {
      * 6 : XOR
      * 7 : NOT
     */
+
+    int arg_index;
+};
+
+struct DataArgument {
+    int argument_type;
+    default_t data;
+
+    int arg_index;
 };
 
 struct AssemblyCode {
@@ -51,27 +61,27 @@ struct AssemblyCode {
 
     // subcodes
     /*
+     ****** arg_count : 0 ******
+     * 0  : Nothing
+     * 1  : D
+     * 2  : A
      ****** arg_count : 1 ******
-     * 0 : R  <- R
-     * 1 : R  <- D
-     * 2 : R  <- A
-     * 3 : A  <- R
-     * 4 : R  <- AR
-     * 5 : AR <- R
-     * 6 : AR <- D
+     * 3  : R
+     * 4  : R  <- D
+     * 5  : R  <- A
+     * 
+     * 6  : AR
+     * 7  : AR <- D
+     * 
+     * 8  : A  <- R
      ****** arg_count : 2 ******
-     * 0 : R
-     * 1 : D
-     * 2 : A
-     * 3 : AR
+     * 9  : R <- R
+     * 10 : R <- AR
+     * 
+     * 11 : AR <- R
      ***************************
     */
-    unsigned short type_instructions[7]; // corresponding instruction per type
-};
-
-struct DataArgument {
-    int argument_type;
-    default_t data;
+    unsigned short type_instructions[12]; // corresponding instruction per type
 };
 
 struct AssemblyInstruction {
@@ -84,6 +94,7 @@ struct AssemblyInstruction {
 
     // for instruction
     char *instruction;
+    
     int argument_count;
     Argument *arguments;
 
@@ -106,11 +117,11 @@ class InstructionController {
             current_position = 0;
             marker_store = new VariableMarker();
             AssemblyCode codes[] = {
-                {"mov"     , 2 , {0x01 , 0x02 , 0x03 , 0x04 , 0x05 , 0x06 , 0x07}} , 
-                {"ldr"     , 2 , {0x08 , 0x09 , 0x0A , 0x0B , 0x00 , 0x00 , 0x00}} , 
-                {"aluout"  , 1 , {0x0C , 0x0D , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
-                {"alutest" , 0 , {0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
-                {"jmp"     , 1 , {0x10 , 0x00 , 0x0F , 0x11 , 0x00 , 0x00 , 0x00}} , 
+                {"mov"     , 2 , {0x00 , 0x00 , 0x00 , 0x00 , 0x02 , 0x03 , 0x00 , 0x07 , 0x04 , 0x01 , 0x05 , 0x06}} , 
+                {"ldr"     , 2 , {0x00 , 0x09 , 0x0A , 0x08 , 0x00 , 0x00 , 0x0B , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
+                {"aluout"  , 1 , {0x00 , 0x00 , 0x0D , 0x0C , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
+                {"alutest" , 0 , {0x0E , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
+                {"jmp"     , 1 , {0x00 , 0x00 , 0x0F , 0x10 , 0x00 , 0x00 , 0x11 , 0x00 , 0x00 , 0x00 , 0x00 , 0x00}} , 
             };
             for(auto i : codes) {
                 asm_codes.push_back(i);
@@ -120,13 +131,12 @@ class InstructionController {
         bool process_line(int line); // error or not
 
         default_t convert_instruction(AssemblyInstruction instruction);
-        void save_loop(AssemblyInstruction instruction);
         
         // static
         static int preprocessing(char *oneline_assembly);
-        static int process_instruction(AssemblyInstruction *instruction , const char *oneline_assembly , int instruction_type);
-        static bool process_data_argument(DataArgument &arg_info , const char *asm_arg);
-        static bool process_argument(Argument &arg_info , const char *asm_arg);
+        int process_instruction(AssemblyInstruction *instruction , const char *oneline_assembly , int instruction_type);
+        bool process_data_argument(DataArgument &arg_info , const char *asm_arg);
+        bool process_argument(Argument &arg_info , const char *asm_arg);
         static int get_argument_count(int instruction_type) {
             if(instruction_type > 4||instruction_type < 0) {
                 return 0;
@@ -138,24 +148,100 @@ class InstructionController {
         /// @param instruction 
         /// @return 
         static int get_real_instruction_type(const AssemblyInstruction instruction) {
+            /* <real instruction type from spreadsheet>
+             * 0 : No arguments
+             * 1 : One argument, 1 : RC
+             * 2 : Two argument  1 : RC, 2 : RC
+             * 3 : Two argument, 1 : RC, 2 : ALU Oper.
+             * 4 : Two argument, 1 : RC, 2 : Conditional Jump Oper.
+             * 5 : Two Argument, 1 : RC, 2 : ERC
+             * 6 : One Argument, 1 : ERC
+            */
             if(instruction.argument_count == 0) {
-                return 0; // type zero : No arguments
+                if(instruction.data_count == 0) { // 0 : nothing
+                    return 0;
+                }
+                else if(instruction.data_count == 1) {
+                    if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_DATA) return 1;
+                    if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_ADDRESS) return 2;
+                }
+                return -1;
             }
-            // one register, one argument
-            if(instruction.argument_count == 2
-            && (instruction.arguments[1].argument_type == 3||instruction.arguments[1].argument_type == 4)) {
-                switch(instruction.arguments[1].argument_type) {
-                    case ARGUMENT_TYPE_REGISTER:
-                        return 1; // type one : only register
-                    case ARGUMENT_TYPE_EXT_REG:
-                        return 6; // type six : only ext. register
-                };
-                // two register, both 'Register'
-                if(instruction.arguments[0].argument_type == 3 && instruction.arguments[1].argument_type == 3) {
-                    return 2;
+            if(instruction.argument_count == 1) {
+                if(instruction.arguments[0].argument_type == ARGUMENT_TYPE_REGISTER) return 1;
+                if(instruction.arguments[0].argument_type ==  ARGUMENT_TYPE_ADDR_REG) return 1;
+                if(instruction.arguments[0].argument_type == ARGUMENT_TYPE_EXT_REG) return 6;
+            }
+            if(instruction.argument_count == 2) {
+                int arg_t1 = instruction.arguments[0].argument_type;
+                int arg_t2 = instruction.arguments[1].argument_type;
+                if(arg_t1 == ARGUMENT_TYPE_REGISTER && arg_t2 == ARGUMENT_TYPE_REGISTER)    return 2;
+                if((arg_t1 == ARGUMENT_TYPE_REGISTER && arg_t2 == ARGUMENT_TYPE_ALU_OPER)
+                || (arg_t1 == ARGUMENT_TYPE_ALU_OPER && arg_t2 == ARGUMENT_TYPE_REGISTER))  return 3;
+                if((arg_t1 == ARGUMENT_TYPE_REGISTER && arg_t2 == ARGUMENT_TYPE_COND_JUMP)
+                || (arg_t1 == ARGUMENT_TYPE_COND_JUMP && arg_t2 == ARGUMENT_TYPE_REGISTER)) return 4;
+                if((arg_t1 == ARGUMENT_TYPE_REGISTER && arg_t2 == ARGUMENT_TYPE_EXT_REG)
+                || (arg_t1 == ARGUMENT_TYPE_EXT_REG && arg_t2 == ARGUMENT_TYPE_REGISTER))   return 5;
+                return -1;
+            }
+            return -1;
+        }
+        static int get_data_type(const AssemblyInstruction instruction) {
+            if(instruction.data_count == 0) {
+                return 0;
+            }
+            if(instruction.data_count == 1) {
+                if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_ADDRESS) return 1;
+                if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_DATA) return 3;
+            }
+            if(instruction.data_count == 2) {
+                if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_ADDRESS 
+                && instruction.data_arguments[1].argument_type == DATAARGUMENT_TYPE_DATA) return 2;
+            }
+            return 0;
+        }
+        static int convert_type(const AssemblyInstruction instruction) {
+            Argument only_reg[instruction.argument_count];
+            int reg_arg_count = 0;
+            for(int i = 0; i < instruction.argument_count; i++) {
+                if(instruction.arguments[i].argument_type == ARGUMENT_TYPE_REGISTER||instruction.arguments[i].argument_type == ARGUMENT_TYPE_ADDR_REG) {
+                    memcpy(&only_reg[reg_arg_count++] , &instruction.arguments[i] , sizeof(Argument));
                 }
             }
+            
+            if(reg_arg_count == 0) {
+                if(instruction.data_count == 0)                                              return 0;
+                if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_DATA)    return 1;
+                if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_ADDRESS) return 2;
+            }
+            if(reg_arg_count == 1) {
+                if(only_reg[0].argument_type == ARGUMENT_TYPE_REGISTER) {
+                    if(instruction.data_count == 0)                                              return 3;
+                    if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_DATA)    return 4;
+                    if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_ADDRESS) return (instruction.data_arguments[0].arg_index > instruction.arguments[0].arg_index) ? 5 : 8;
+                }
+                else if(only_reg[0].argument_type == ARGUMENT_TYPE_ADDR_REG) {
+                    if(instruction.data_count == 0)                                              return 6;
+                    if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_DATA)    return 7;
+                }
+            }
+            if(reg_arg_count == 2) {
+                if(only_reg[0].argument_type == ARGUMENT_TYPE_REGISTER) {
+                    if(only_reg[1].argument_type == ARGUMENT_TYPE_REGISTER)  return 9;
+                    if(only_reg[1].argument_type == ARGUMENT_TYPE_ADDR_REG)  return 10;
+                }
+                if(only_reg[0].argument_type == ARGUMENT_TYPE_ADDR_REG) {
+                    if(only_reg[1].argument_type == ARGUMENT_TYPE_REGISTER)  return 11;
+                }
+            }
+            return -1;
         }
+
+        inline default_t convert_instruction_code(int main_instruction , int argument0 , int argument1 , int data_type , int instruction_type) {
+            return ((main_instruction & 0b11111)|((argument0 & 0b111) << 5)|((argument1 & 0b111) << (5+3))|((data_type & 0b11) << (5+3+3))|((instruction_type & 0b111) << (5+3+3+2)));
+        }
+
+        VariableMarker *marker_store;
     private:
         AssemblyCode *get_assembly_code_info(const char *instruction) {
             int sz = asm_codes.size();
@@ -169,7 +255,6 @@ class InstructionController {
 
         std::vector<std::pair<AssemblyInstruction,int>>*asm_source;
         unsigned int current_position = 0;
-        VariableMarker *marker_store;
         std::vector<AssemblyCode>asm_codes;
 };
 
