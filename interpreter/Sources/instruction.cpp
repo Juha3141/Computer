@@ -179,6 +179,9 @@ bool InstructionController::process_argument(Argument &arg_info , const char *as
             if(!strcmp(new_higher+1 , "BP")) arg_info.ext_reg_number = 2;
             if(!strcmp(new_higher+1 , "SP")) arg_info.ext_reg_number = 3;
             if(!strcmp(new_higher+1 , "DIVOUT")) arg_info.ext_reg_number = 4;
+            if(!strcmp(new_higher+1 , "PORTA")) arg_info.ext_reg_number = 5;
+            if(!strcmp(new_higher+1 , "PORTRW")) arg_info.ext_reg_number = 6;
+            if(!strcmp(new_higher+1 , "PORTE")) arg_info.ext_reg_number = 7;
             break;
         case 3: {
             arg_info.argument_type = 5;
@@ -307,7 +310,7 @@ static int get_argument(AssemblyInstruction instruction , int index) {
     }
 }
 
-default_t InstructionController::convert_instruction(AssemblyInstruction instruction) {
+int InstructionController::convert_instruction(AssemblyInstruction instruction) {
     default_t numeric_main_instr = 0x00;
     // if(instruction.instruction_type == )
     AssemblyCode *code = get_assembly_code_info(instruction.instruction);
@@ -327,7 +330,13 @@ default_t InstructionController::convert_instruction(AssemblyInstruction instruc
     printf("Main Instruction : 0x%X\n" , numeric_main_instr);
     if(numeric_main_instr == 0xFF) {
         printf("Invalid use of instruction\n");
-        return 0xFF;
+        return -1;
+    }
+    if(numeric_main_instr == 0xDD) {
+        if(instruction.argument_count != 1) {
+            return 0;
+        }
+        return instruction.data_arguments[0].data;
     }
     
     int argument0 = get_argument(instruction , 0);
@@ -336,10 +345,6 @@ default_t InstructionController::convert_instruction(AssemblyInstruction instruc
     printf("argument 1 : %d\n" , argument1);
     
     default_t full_instruction = convert_instruction_code(numeric_main_instr , argument0 , argument1);
-    if(full_instruction == 0xFF) {
-        printf("Invalid argument type\n");
-        return 0xFF; // error
-    }
     return full_instruction;
 }
 
