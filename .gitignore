@@ -1,4 +1,4 @@
 .vscode/
 */.gdb_history
-interpreter/Binary/
-interpreter/Binary
+assembler/Binary/
+assembler/Binary
