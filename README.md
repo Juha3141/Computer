@@ -1,5 +1,6 @@
 # Computer
 Basic 16bit computer(for fun)
+![alt text](https://github.com/Juha3141/Computer/blob/master/documents/circuit.png?raw=true)
 ### 1. Goal of this project
 The project is just making a computer architecture, nothing too abstract or something.. My initial goal was to design this architecture and actually making it (irl), but I found that pretty much impossible, since the project has gone to the point that I cannot make this in a breadboard. However, I am still planning to make this via PCB design and some breadboards(like, breadboard and PCB hybrid computer ..) 
 
