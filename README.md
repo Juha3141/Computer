@@ -7,7 +7,7 @@ The project is just making a computer architecture, nothing too abstract or some
 ### 2. Specification
 ```
 Architecture    : 16bit
-ISA             : RISC(+ CISC), Hybrid I guess..?
+ISA             : CISC
 Registers Count : 8 General Purpose Reg(R0-R7), 2 ALU Input Reg(A,B)
                   2 Stack Reg(BP,SP), Flag Reg(Flag)
                   = Total 13 registers
