@@ -12,6 +12,9 @@
 #define INSTRUCTION_MAININSTRUCTION_SIZE 6
 #define INSTRUCTION_ARGUMENT_SIZE        3
 
+#define INSTRUCTION_TYPE_LABEL  0
+#define INSTRUCTION_TYPE_STRING 2
+
 typedef unsigned short default_t;
 typedef char bit_one;
 
@@ -25,6 +28,7 @@ struct Argument {
      * 5 : Conditional Jump
      * 6 : ALU Operation
      * 7 : label-register
+     * 8 : string(db)
     */
     int register_number;
     int ext_reg_number;
@@ -47,8 +51,9 @@ struct Argument {
      * 6 : XOR
      * 7 : NOT
     */
-
     int arg_index;
+
+    char *string;
 };
 
 struct DataArgument {
@@ -131,7 +136,8 @@ class InstructionController {
                 {"in"      , 1 , {0xFF , 0xFF , 0x17 , 0x16 , 0xFF , 0xFF , 0x18 , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} ,
                 {"stpc"    , 1 , {0xFF , 0xFF , 0xFF , 0x1D , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} , 
                 {"hlt"     , 0 , {0x1F , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}} , 
-                {"db"      , 1 , {0xFF , 0xDD , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}}
+                {"ldrom"   , 0 , {0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0x19 , 0xFF}} , 
+                {"str"     , 1 , {0xFF , 0xDB , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF , 0xFF}}
             };
             for(auto i : codes) {
                 asm_codes.push_back(i);
@@ -148,10 +154,7 @@ class InstructionController {
         bool process_data_argument(DataArgument &arg_info , const char *asm_arg);
         bool process_argument(Argument &arg_info , const char *asm_arg);
         static int get_argument_count(int instruction_type) {
-            if(instruction_type > 4||instruction_type < 0) {
-                return 0;
-            }
-            const int ac[] = {0,0,2,1,2};
+            const int ac[] = {0,0,1,2,1,2,1};
             return ac[instruction_type];
         }
         /// @brief Get real instruction type
@@ -220,7 +223,6 @@ class InstructionController {
                     memcpy(&only_reg[reg_arg_count++] , &instruction.arguments[i] , sizeof(Argument));
                 }
             }
-            
             if(reg_arg_count == 0) {
                 if(instruction.data_count == 0)                                              return 0;
                 if(instruction.data_arguments[0].argument_type == DATAARGUMENT_TYPE_DATA)    return 1;

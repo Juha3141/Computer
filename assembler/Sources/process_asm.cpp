@@ -32,11 +32,11 @@ int get_instruction_type(const char *string) {
     std::regex *regs[] = {
         new std::regex("\\w+[ ]*:[ ]*") , // [control]:
         new std::regex("\\w+[ ]*") ,  // [instruction]
+        new std::regex("\\w+[ ]+[\"|\'].+[\"|\']") , // [instruction] [string]
         new std::regex("\\w+[ ]+[A-Za-z\\!-9]+[ ]*,[ ]*[A-Za-z\\!-9]+") , // [instruction] [argument 1],[argument 2]
         new std::regex("\\w+[ ]+[A-Za-z\\!-9]+[ ]*") , // [instruction] [argument 1]
         new std::regex("\\w+\\([A-Za-z\\!-9]+\\)[ ]+[A-Za-z\\!-9]+[ ]*") , // [instruction](argument 1) [argument 2]
         new std::regex("\\w+\\([A-Za-z\\!-9]+\\)[ ]*") , // [instruction](argument 1)
-        new std::regex("\\w+[ ]+[\\\"|\\\'][A-Z|a-z|\\!-9| ][\\\"|\\\'][ ]*") , 
     };
     for(int i = 0; i < sizeof(regs)/sizeof(std::regex*); i++) {
         if(std::regex_match(string , *regs[i]) == true) {
@@ -58,23 +58,22 @@ int parse_from_asm(const char *assembly , char *instruction , char **argument , 
     std::regex *regs[] = {
         new std::regex("([\\w]+)[ ]*\\:[ ]*") , // [control]:
         new std::regex("([\\w]+)[ ]*") ,        // [instruction]
+        new std::regex("\\w+[ ]+([\"|\'].+[\"|\'])[ ]*") , // [instruction](string)
         new std::regex("([\\w]+)[ ]+([A-Za-z!-9]+)[ ]*\\,[ ]*([A-Za-z!-9]+)[ ]*") , // [instruction] [argument 1],[argument 2]
         new std::regex("([\\w]+)[ ]+([A-Za-z!-9]+)[ ]*") , // [instruction] [argument 1]
         new std::regex("([\\w]+)\\(([A-Za-z!-9]+)\\)[ ]+([A-Za-z!-9]+)[ ]*") , // [instruction](argument 1) [argument 2]
         new std::regex("([\\w]+)\\(([A-Za-z!-9]+)\\)[ ]*") , // [instruction](argument 1)
     };
-    if(instruction_type > 5||instruction_type < 0) {
-        return 0;
-    }
     std::cout<<"instruction_type : "<<instruction_type<<"\n";
-    std::string newstr = assembly;
+    std::string newstr(assembly);
     if(std::regex_search(newstr , match , *regs[instruction_type]) == false) {
         return 0;
     }
+    std::cout<<"match.size() = "<<match.size()<<"\n";
     strcpy(instruction , match[1].str().c_str());
-    for(int i = 0; i < match.size()-2; i++) { // skip first and second
-        std::cout<<"arg "<<i<<":"<<match[i+2].str()<<"\n";
-        strcpy(argument[argument_count++] , match[i+2].str().c_str());
+    for(int i = 2; i < match.size(); i++) { // skip first and second
+        std::cout<<"arg "<<i<<":"<<match[i].str()<<"\n";
+        strcpy(argument[argument_count++] , match[i].str().c_str());
     }
     return argument_count;
 }

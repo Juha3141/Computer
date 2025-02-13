@@ -47,22 +47,29 @@ int main(int argc , char **argv) {
         
         AssemblyInstruction instruction;
 
-        // To-do : create conditional loop system
         int instr_size = instruction_controller.process_instruction(&instruction , c_string , instr_type);
         int second = offset;
-        if(instruction.instruction_type == 0) {
+        printf("instr_size = %d\n" , instr_size);
+        if(instruction.instruction_type == INSTRUCTION_TYPE_LABEL) {
             // if it's control -> 
             instruction_controller.marker_store->store_mark(instruction.instruction , offset);
             second = -1;
+        }
+        if(instruction.instruction_type == INSTRUCTION_TYPE_STRING) {
+            offset += strlen(instruction.arguments[0].string);
         }
         full_contents.push_back(std::make_pair(instruction , second));
         offset += instr_size; 
         current_line++;
         delete c_string;
     }
+    printf("--------------------- converting lines into machine codes --------------------- \n");
     for(int i = 0; i < current_line; i++) {
-        std::cout<<"procesing line "<<i<<"\n";
-        instruction_controller.process_line(i);
+        std::cout<<"procesing line "<<i+1<<"\n";
+        if(instruction_controller.process_line(i) == false) {
+            printf("Error at line %d\n" , i+1);
+            return 0;
+        }
     }
     std::cout<<"done processing ------------ \n";
     for(auto i = instruction_controller.interpreted_codes.begin(); i != instruction_controller.interpreted_codes.end(); i++) {

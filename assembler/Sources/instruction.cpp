@@ -32,24 +32,30 @@ int InstructionController::preprocessing(char *oneline_assembly) {
             break;
         }
     }
+    printf("check1\n");
     remove_first_end_spaces(oneline_assembly);
     for(int i = 0; oneline_assembly[i] != 0x00; i++) {
         if(oneline_assembly[i] == ':') {
             label = i;
         }
     }
+    printf("check2\n");
     if(!label) {
-        for(int i = 0; oneline_assembly[i] != ' ' && oneline_assembly[i] != '('; i++) {
+        for(int i = 0; oneline_assembly[i] != ' ' && oneline_assembly[i] != '(' && oneline_assembly[i] != 0x00; i++) {
             oneline_assembly[i] = tolower(oneline_assembly[i]);
         }
     }
-    for(instruction_end = 0; oneline_assembly[instruction_end] != ' '; instruction_end++) {}
+    printf("check3\n");
+    for(instruction_end = strlen(oneline_assembly)-1; oneline_assembly[instruction_end] == ' '; instruction_end--) {}
+    printf("instruction_end : %d(l=%d)\n" , instruction_end , strlen(oneline_assembly));
     if((instruction_type = get_instruction_type(oneline_assembly)) < 0) {
         return -1;
     }
+    printf("check4\n");
     if(instruction_end != strlen(oneline_assembly)-1) {
-        remove_spaces(oneline_assembly+instruction_end+1);
+        remove_spaces(oneline_assembly+instruction_end);
     }
+    printf("check5\n");
     std::cout<<"preprocessed : "<<oneline_assembly<<"\n";
     return instruction_type;
 }
@@ -71,7 +77,6 @@ int InstructionController::preprocessing(char *oneline_assembly) {
         new std::regex("\\*\\d+") ,                 /* address */\
         new std::regex("\\w+") ,                    /* label */\
         new std::regex("\\*\\w+") ,                 /* label-address */\
-        new std::regex("[\\\"|\\'][A-Za-z!-9][\\\"|\\']") ,   /* string */\
     };
 
 bool InstructionController::process_data_argument(DataArgument &arg_info , const char *asm_arg) {
@@ -96,43 +101,43 @@ bool InstructionController::process_data_argument(DataArgument &arg_info , const
     arg_info.argument_type = DATAARGUMENT_TYPE_DATA;
     arg_info.label = 0x00;
     switch(type) {
-        case 0:
+        case 0: // hex data
             arg_info.argument_type = DATAARGUMENT_TYPE_DATA;
-            arg_info.data = strtol(asm_arg+2 , 0x00 , 16);
+            arg_info.data = strtol(asm_arg+2 , 0x00 , 16); // asm_arg+2 : To remove hex prefix "0x"
             break;
-        case 1:
+        case 1: // binary data
             arg_info.argument_type = DATAARGUMENT_TYPE_DATA;
             arg_info.data = strtol(asm_arg+2 , 0x00 , 2);
             break;
-        case 2:
+        case 2: // decimal
             arg_info.argument_type = DATAARGUMENT_TYPE_DATA;
             arg_info.data = strtol(asm_arg , 0x00 , 10);
             break;
-        case 3:
+        case 3: // hex address
             arg_info.argument_type = DATAARGUMENT_TYPE_ADDRESS;
             arg_info.data = strtol(asm_arg+3 , 0x00 , 16);
             break;
-        case 4:
+        case 4: // binary address
             arg_info.argument_type = DATAARGUMENT_TYPE_ADDRESS;
             arg_info.data = strtol(asm_arg+3 , 0x00 , 2);
             break;
-        case 5:
+        case 5: // address
             arg_info.argument_type = DATAARGUMENT_TYPE_ADDRESS;
             arg_info.data = strtol(asm_arg+1 , 0x00 , 10);
             break;
-        case 6: {
+        case 6: { // label
             arg_info.argument_type = DATAARGUMENT_TYPE_DATA;
             arg_info.label = new char[strlen(asm_arg)];
             strcpy(arg_info.label , asm_arg);
             break;
         }
-        case 7: {
+        case 7: { // label address (*LABEL)
             arg_info.argument_type = DATAARGUMENT_TYPE_ADDRESS;
             arg_info.label = new char[strlen(asm_arg)];
             strcpy(arg_info.label , asm_arg+1);
             break;
         }
-        case 8: {
+        case 8: { // string
             arg_info.argument_type = DATAARGUMENT_TYPE_STRING;
             arg_info.string = new char[strlen(asm_arg)];
             strncpy(arg_info.string , asm_arg+1 , strlen(asm_arg)-2);
@@ -180,28 +185,28 @@ bool InstructionController::process_argument(Argument &arg_info , const char *as
             arg_info.argument_type = 2;
             arg_info.register_number = atoi(asm_arg+2);
             break;
-        case 2:
+        case 2: // Extra register options
             arg_info.argument_type = 4;
-            if(!strcmp(new_higher+1 , "A")) arg_info.ext_reg_number = 0;
-            if(!strcmp(new_higher+1 , "B")) arg_info.ext_reg_number = 1;
+            if(!strcmp(new_higher+1 , "A")) arg_info.ext_reg_number = 0;     // Register A
+            if(!strcmp(new_higher+1 , "B")) arg_info.ext_reg_number = 1;     // Register B
             if(!strcmp(new_higher+1 , "BP")) arg_info.ext_reg_number = 2;
             if(!strcmp(new_higher+1 , "SP")) arg_info.ext_reg_number = 3;
             if(!strcmp(new_higher+1 , "DIVOUT")) arg_info.ext_reg_number = 4;
-            if(!strcmp(new_higher+1 , "PORTA")) arg_info.ext_reg_number = 5;
-            if(!strcmp(new_higher+1 , "PORTRW")) arg_info.ext_reg_number = 6;
-            if(!strcmp(new_higher+1 , "PORTE")) arg_info.ext_reg_number = 7;
+            if(!strcmp(new_higher+1 , "PORTADDR")) arg_info.ext_reg_number = 5;  // Port Address
+            if(!strcmp(new_higher+1 , "PORTRW")) arg_info.ext_reg_number = 6; // Port R/W Status
+            if(!strcmp(new_higher+1 , "PORTE")) arg_info.ext_reg_number = 7; // Port Enable
             break;
-        case 3: {
+        case 3: { // Jump options
             arg_info.argument_type = 5;
-            if(new_higher[1] == 'J') arg_info.conditional_jump = 0;
-            if(new_higher[1] == 'Z') arg_info.conditional_jump = 1;
-            if(new_higher[1] == 'U') arg_info.conditional_jump = 2;
-            if(new_higher[1] == 'S') arg_info.conditional_jump = 3;
-            if(new_higher[1] == 'C') arg_info.conditional_jump = 4;
-            if(new_higher[1] == 'O') arg_info.conditional_jump = 5;
+            if(new_higher[1] == 'J') arg_info.conditional_jump = 0; // Unconditional Jump
+            if(new_higher[1] == 'Z') arg_info.conditional_jump = 1; // Jump if result is zero
+            if(new_higher[1] == 'U') arg_info.conditional_jump = 2; // Jump if result is unsigned (+)
+            if(new_higher[1] == 'S') arg_info.conditional_jump = 3; // Jump if result is signed (-)
+            if(new_higher[1] == 'C') arg_info.conditional_jump = 4; // Jump if carry
+            if(new_higher[1] == 'O') arg_info.conditional_jump = 5; // Jump if overflow
             break;
         }
-        case 4: {
+        case 4: { // Arithmetic operation options
             arg_info.argument_type = 6;
             if(!strcmp(new_higher+1 , "ADD")) arg_info.alu_operation = 0;
             if(!strcmp(new_higher+1 , "SUB")) arg_info.alu_operation = 1;
@@ -221,7 +226,7 @@ bool InstructionController::process_argument(Argument &arg_info , const char *as
 /// @param instruction 
 /// @param oneline_assembly 
 /// @param instruction_type 
-/// @return return true if it is 
+/// @return 
 int InstructionController::process_instruction(AssemblyInstruction *instruction , const char *oneline_assembly , int instruction_type) {
     int instruction_size = 1;
     int total_argument_count = get_argument_count(instruction_type)+1;
@@ -237,13 +242,30 @@ int InstructionController::process_instruction(AssemblyInstruction *instruction 
 
     std::cout<<"total argument count : "<<total_argument_count<<"\n";
     parse_from_asm(oneline_assembly , instruction->instruction , arguments , instruction_type);
-    if(instruction_type == 0) {
-        // control, save
+    if(instruction_type == INSTRUCTION_TYPE_LABEL) { 
+        // control(label), save
         instruction->argument_count = 0;
         instruction->arguments = 0x00;
         instruction->data_count = 0;
         instruction->data_arguments = 0x00;
         return 0;
+    }
+    if(instruction_type == INSTRUCTION_TYPE_STRING) {
+        instruction->data_count = 0;
+        instruction->data_arguments = 0x00;
+        // string argument
+        instruction->argument_count = 1;
+        instruction->arguments = new Argument[1];
+        std::regex str_regex("\\w+[ ]+([\"|\'].+[\"|\'])"); // [instruction](string)
+        
+        std::smatch match;
+        std::string str = std::string(oneline_assembly);
+        regex_search(str , match , str_regex);
+        int len = match[1].str().length();
+        instruction->arguments[0].string = new char[len+1];
+        strncpy(instruction->arguments[0].string , match[1].str().c_str()+1 , len-2); // truncate the quotation marks
+
+        return instruction_size;
     }
     std::cout<<"instruction:"<<instruction->instruction<<"\n";
     for(int i = 0; i < total_argument_count; i++) {
@@ -266,20 +288,21 @@ int InstructionController::process_instruction(AssemblyInstruction *instruction 
     for(int i = 0; i < total_argument_count; i++) {
         if(process_argument(instruction->arguments[count] , arguments[i]) == true) {
             instruction->arguments[count].arg_index = i;
+            printf("processing \"argument\" : %d\n" , count);
             count++;
         }
     }
     instruction->argument_count = count;
     instruction_size += instruction->data_count;
     
-    std::sort(instruction->arguments , instruction->arguments+instruction->argument_count , [](Argument a,Argument b){
-        return a.argument_type<b.argument_type;
-    });
-    /*
-    std::sort(instruction->data_arguments , instruction->data_arguments+instruction->data_count , [](DataArgument a,DataArgument b){
-        return a.argument_type<b.argument_type;
-    });
-    */
+    if(instruction->arguments[0].argument_type == ARGUMENT_TYPE_EXT_REG
+    ||instruction->arguments[0].argument_type == ARGUMENT_TYPE_COND_JUMP
+    ||instruction->arguments[0].argument_type == ARGUMENT_TYPE_ALU_OPER) {
+        printf("sorting argument\n");
+        std::sort(instruction->arguments , instruction->arguments+instruction->argument_count , [](Argument a,Argument b){
+            return a.argument_type<b.argument_type;
+        });
+    }
     // for debugging
     for(int i = 0; i < instruction->data_count; i++) {
         printf("---- Type : Data(%d) ----\n" , i);
@@ -320,7 +343,6 @@ static int get_argument(AssemblyInstruction instruction , int index) {
 
 int InstructionController::convert_instruction(AssemblyInstruction instruction) {
     default_t numeric_main_instr = 0x00;
-    // if(instruction.instruction_type == )
     AssemblyCode *code = get_assembly_code_info(instruction.instruction);
     if(code == 0x00) {
         // error
@@ -361,12 +383,25 @@ bool InstructionController::process_line(int line) {
         std::cout<<"skipping line "<<line<<"\n";
         return true;
     }
+    AssemblyInstruction *instruction = &(asm_source->at(line).first);
+    if(instruction->instruction_type == INSTRUCTION_TYPE_STRING) {
+        printf("string! \"%s\"\n" , instruction->arguments[0].string);
+        int len = strlen(instruction->arguments[0].string);
+        for(int i = 0; i < len; i++) {
+            interpreted_codes.push_back((default_t)instruction->arguments[0].string[i]);
+        }
+        // end of string
+        interpreted_codes.push_back(0x00);
+        return true;
+    }
     default_t full_instruction = convert_instruction(asm_source->at(line).first);
+    if(full_instruction == 0xFFFF) {
+        return false;
+    }
 
     interpreted_codes.push_back(full_instruction);
     printf("full instruction : 0x%04X\n" , full_instruction);
     printf("full data        : ");
-    AssemblyInstruction *instruction = &(asm_source->at(line).first);
     for(int i = 0; i < instruction->data_count; i++) {
         default_t data = instruction->data_arguments[i].data;
         if(instruction->data_arguments[i].label != 0x00) {
